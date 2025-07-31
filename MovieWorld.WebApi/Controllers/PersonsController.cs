@@ -85,6 +85,33 @@ public class PersonsController : ControllerBase
     }
   }
 
+  [HttpGet("search/{searchText}")]
+  public async Task<IActionResult> GetByNameAsync(string searchText)
+  {
+    BaseResponseModel response = new BaseResponseModel();
+
+    try
+    {
+      var searchedPerson = await _context.Persons.Where(p => p.Name.Contains(searchText)).Select(x => new {
+        x.Id,
+        x.Name
+      }).ToListAsync();
+
+      response.Status = true;
+      response.Message = "Success";
+      response.Data = searchedPerson;
+
+      return Ok(response);
+    }
+    catch (Exception ex)
+    {
+      response.Status = false;
+      response.Message = "Something went wrong.";
+
+      return BadRequest(response);
+    }
+  }
+
   [HttpPost("add")]
   public async Task<IActionResult> AddAsync(ActorViewModel model)
   {
@@ -119,6 +146,96 @@ public class PersonsController : ControllerBase
 
         return BadRequest(response);
       }
+    }
+    catch (Exception ex)
+    {
+      response.Status = false;
+      response.Message = "Something went wrong.";
+
+      return BadRequest(response);
+    }
+  }
+
+  [HttpPut("update")]
+  public async Task<IActionResult> UpdateAsync(ActorViewModel model)
+  {
+    BaseResponseModel response = new BaseResponseModel();
+
+    try
+    {
+      if (ModelState.IsValid)
+      {
+        var postedModel = _mapper.Map<Person>(model);
+
+        if (model.Id <= 0)
+        {
+          response.Status = false;
+          response.Message = "Invalid person record.";
+
+          return BadRequest(response);
+        }
+
+        var personDetails = await _context.Persons.Where(p => p.Id == model.Id).AsNoTracking().FirstOrDefaultAsync();
+
+        if (personDetails == null)
+        {
+          response.Status = false;
+          response.Message = "Invalid person record.";
+
+          return BadRequest(response);
+        }
+
+        _context.Persons.Update(postedModel);
+        await _context.SaveChangesAsync();
+
+        response.Status = true;
+        response.Message = "Updated successfully.";
+        response.Data = postedModel;
+
+        return Ok(response);
+      }
+      else
+      {
+        response.Status = false;
+        response.Message = "Validation failed.";
+        response.Data = ModelState;
+
+        return BadRequest(response);
+      }
+    }
+    catch (Exception ex)
+    {
+      response.Status = false;
+      response.Message = "Something went wrong.";
+
+      return BadRequest(response);
+    }
+  }
+
+  [HttpDelete("delete")]
+  public async Task<IActionResult> RemoveAsync(int id)
+  {
+    BaseResponseModel response = new BaseResponseModel();
+
+    try
+    {
+      var person = await _context.Persons.Where(p => p.Id == id).FirstOrDefaultAsync();
+
+      if (person == null)
+      {
+        response.Status = false;
+        response.Message = "Invalid person record.";
+
+        return BadRequest(response);
+      }
+
+      _context.Persons.Remove(person);
+      await _context.SaveChangesAsync();
+
+      response.Status = true;
+      response.Message = "Deleted successfully.";
+
+      return Ok(response);
     }
     catch (Exception ex)
     {

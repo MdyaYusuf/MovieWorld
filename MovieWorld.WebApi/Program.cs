@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using MovieWorld.WebApi;
 using MovieWorld.WebApi.Data;
 
@@ -21,6 +22,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles(new StaticFileOptions()
+{
+  FileProvider = new PhysicalFileProvider(@"C:\Users\Yusuf\Desktop\Web\MovieWorld"),
+  RequestPath = "/StaticFiles"
+});
 
 app.UseAuthorization();
 

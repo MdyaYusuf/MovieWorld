@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using MovieWorld.WebApi.Data;
 using MovieWorld.WebApi.Entities;
 using MovieWorld.WebApi.Models;
+using System.Net.Http.Headers;
 
 namespace MovieWorld.WebApi.Controllers;
 
@@ -228,7 +229,7 @@ public class MoviesController : ControllerBase
     }
   }
 
-  [HttpDelete]
+  [HttpDelete("delete")]
   public async Task<IActionResult> RemoveAsync(int id)
   {
     BaseResponseModel response = new BaseResponseModel();
@@ -259,6 +260,50 @@ public class MoviesController : ControllerBase
       response.Message = "Something went wrong.";
 
       return BadRequest(response);
+    }
+  }
+
+  [HttpPost("upload")]
+  public async Task<IActionResult> UploadMoviePoster(IFormFile imageFile)
+  {
+    try
+    {
+      var filename = ContentDispositionHeaderValue.Parse(imageFile.ContentDisposition).FileName.TrimStart('\"').TrimEnd('\"');
+      string newPath = @"C:\Users\Yusuf\Desktop\Web\MovieWorld";
+
+      if (!Directory.Exists(newPath))
+      {
+        Directory.CreateDirectory(newPath);
+      }
+
+      string[] allowedImageExtensions = new string[] { ".jpg", ".jpeg", ".png" };
+
+      if (!allowedImageExtensions.Contains(Path.GetExtension(filename)))
+      {
+        return BadRequest(new BaseResponseModel()
+        {
+          Status = false,
+          Message = "Only .jpg, .jpeg, .png type files are allowed."
+        });
+      }
+
+      string newFileName = Guid.NewGuid() + Path.GetExtension(filename);
+      string fullFilePath = Path.Combine(newPath, newFileName);
+
+      using (var stream = new FileStream(fullFilePath, FileMode.Create))
+      {
+        await imageFile.CopyToAsync(stream);
+      }
+
+      return Ok(new { ProfileImage = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/StaticFiles/{newFileName}" });
+    }
+    catch (Exception ex)
+    {
+      return BadRequest(new BaseResponseModel()
+      {
+        Status = false,
+        Message = "Error occured."
+      });
     }
   }
 }
