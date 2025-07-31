@@ -1,0 +1,6 @@
+@MovieWorld.WebApi_HostAddress = http://localhost:5274
+
+GET {{MovieWorld.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
