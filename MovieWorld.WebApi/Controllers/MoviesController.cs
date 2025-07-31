@@ -25,7 +25,19 @@ public class MoviesController : ControllerBase
     try
     {
       var movieCount = _context.Movies.Count();
-      var movieList = await _context.Movies.Include(m => m.Actors).Skip(pageIndex * pageSize).Take(pageSize).ToListAsync();
+      var movieList = await _context.Movies.Include(m => m.Actors).Skip(pageIndex * pageSize).Take(pageSize).Select(m => new MovieListViewModel {
+        Id = m.Id,
+        Title = m.Title,
+        Actors = m.Actors.Select(a => new ActorViewModel
+        {
+          Id = a.Id,
+          Name = a.Name,
+          DateOfBirth = a.DateOfBirth
+        }).ToList(),
+        Language = m.Language,
+        ReleaseDate = m.ReleaseDate,
+        CoverImage = m.CoverImage
+      }).ToListAsync();
 
       response.Status = true;
       response.Message = "Success";
@@ -49,7 +61,20 @@ public class MoviesController : ControllerBase
 
     try
     {
-      var movie = await _context.Movies.Include(m => m.Actors).Where(m => m.Id == id).FirstOrDefaultAsync();
+      var movie = await _context.Movies.Include(m => m.Actors).Where(m => m.Id == id).Select(m => new MovieDetailsViewModel {
+        Id = m.Id,
+        Title = m.Title,
+        Description = m.Description,
+        Actors = m.Actors.Select(a => new ActorViewModel
+        {
+          Id = a.Id,
+          Name = a.Name,
+          DateOfBirth = a.DateOfBirth
+        }).ToList(),
+        Language = m.Language,
+        ReleaseDate = m.ReleaseDate,
+        CoverImage = m.CoverImage
+      }).FirstOrDefaultAsync();
 
       if (movie == null)
       {
@@ -106,9 +131,25 @@ public class MoviesController : ControllerBase
         await _context.Movies.AddAsync(postedModel);
         await _context.SaveChangesAsync();
 
+        var responseData = new MovieDetailsViewModel
+        {
+          Id = postedModel.Id,
+          Title = postedModel.Title,
+          Description = postedModel.Description,
+          Actors = postedModel.Actors.Select(a => new ActorViewModel
+          {
+            Id = a.Id,
+            Name = a.Name,
+            DateOfBirth = a.DateOfBirth
+          }).ToList(),
+          Language = postedModel.Language,
+          ReleaseDate = postedModel.ReleaseDate,
+          CoverImage = postedModel.CoverImage
+        };
+
         response.Status = true;
         response.Message = "Created successfully.";
-        response.Data = postedModel;
+        response.Data = responseData;
 
         return Ok(response);
       }
@@ -188,9 +229,25 @@ public class MoviesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        var responseData = new MovieDetailsViewModel
+        {
+          Id = movie.Id,
+          Title = movie.Title,
+          Description = movie.Description,
+          Actors = movie.Actors.Select(a => new ActorViewModel
+          {
+            Id = a.Id,
+            Name = a.Name,
+            DateOfBirth = a.DateOfBirth
+          }).ToList(),
+          Language = movie.Language,
+          ReleaseDate = movie.ReleaseDate,
+          CoverImage = movie.CoverImage
+        };
+
         response.Status = true;
         response.Message = "Updated successfully.";
-        response.Data = movie;
+        response.Data = responseData;
 
         return Ok(response);
       }
