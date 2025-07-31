@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MovieWorld.WebApi.Data;
@@ -12,9 +13,11 @@ namespace MovieWorld.WebApi.Controllers;
 public class MoviesController : ControllerBase
 {
   private readonly MovieDbContext _context;
-  public MoviesController(MovieDbContext context)
+  private readonly IMapper _mapper;
+  public MoviesController(MovieDbContext context, IMapper mapper)
   {
-    _context = context;    
+    _context = context;
+    _mapper = mapper;
   }
 
   [HttpGet("getall")]
@@ -25,19 +28,7 @@ public class MoviesController : ControllerBase
     try
     {
       var movieCount = _context.Movies.Count();
-      var movieList = await _context.Movies.Include(m => m.Actors).Skip(pageIndex * pageSize).Take(pageSize).Select(m => new MovieListViewModel {
-        Id = m.Id,
-        Title = m.Title,
-        Actors = m.Actors.Select(a => new ActorViewModel
-        {
-          Id = a.Id,
-          Name = a.Name,
-          DateOfBirth = a.DateOfBirth
-        }).ToList(),
-        Language = m.Language,
-        ReleaseDate = m.ReleaseDate,
-        CoverImage = m.CoverImage
-      }).ToListAsync();
+      var movieList = _mapper.Map<List<MovieListViewModel>>(await _context.Movies.Include(m => m.Actors).Skip(pageIndex * pageSize).Take(pageSize).ToListAsync());
 
       response.Status = true;
       response.Message = "Success";
@@ -61,20 +52,7 @@ public class MoviesController : ControllerBase
 
     try
     {
-      var movie = await _context.Movies.Include(m => m.Actors).Where(m => m.Id == id).Select(m => new MovieDetailsViewModel {
-        Id = m.Id,
-        Title = m.Title,
-        Description = m.Description,
-        Actors = m.Actors.Select(a => new ActorViewModel
-        {
-          Id = a.Id,
-          Name = a.Name,
-          DateOfBirth = a.DateOfBirth
-        }).ToList(),
-        Language = m.Language,
-        ReleaseDate = m.ReleaseDate,
-        CoverImage = m.CoverImage
-      }).FirstOrDefaultAsync();
+      var movie = await _context.Movies.Include(m => m.Actors).Where(m => m.Id == id).FirstOrDefaultAsync();
 
       if (movie == null)
       {
@@ -84,9 +62,11 @@ public class MoviesController : ControllerBase
         return BadRequest(response);
       }
 
+      var movieData = _mapper.Map<MovieDetailsViewModel>(movie);
+
       response.Status = true;
       response.Message = "Success";
-      response.Data = movie;
+      response.Data = movieData;
 
       return Ok(response);
     }
@@ -118,34 +98,13 @@ public class MoviesController : ControllerBase
           return BadRequest(response);
         }
 
-        var postedModel = new Movie()
-        {
-          Title = model.Title,
-          Description = model.Description,
-          Language = model.Language,
-          ReleaseDate = model.ReleaseDate,
-          CoverImage = model.CoverImage,
-          Actors = actors
-        };
+        var postedModel = _mapper.Map<Movie>(model);
+        postedModel.Actors = actors;
 
         await _context.Movies.AddAsync(postedModel);
         await _context.SaveChangesAsync();
 
-        var responseData = new MovieDetailsViewModel
-        {
-          Id = postedModel.Id,
-          Title = postedModel.Title,
-          Description = postedModel.Description,
-          Actors = postedModel.Actors.Select(a => new ActorViewModel
-          {
-            Id = a.Id,
-            Name = a.Name,
-            DateOfBirth = a.DateOfBirth
-          }).ToList(),
-          Language = postedModel.Language,
-          ReleaseDate = postedModel.ReleaseDate,
-          CoverImage = postedModel.CoverImage
-        };
+        var responseData = _mapper.Map<MovieDetailsViewModel>(postedModel);
 
         response.Status = true;
         response.Message = "Created successfully.";
@@ -259,6 +218,40 @@ public class MoviesController : ControllerBase
 
         return BadRequest(response);
       }
+    }
+    catch (Exception ex)
+    {
+      response.Status = false;
+      response.Message = "Something went wrong.";
+
+      return BadRequest(response);
+    }
+  }
+
+  [HttpDelete]
+  public async Task<IActionResult> RemoveAsync(int id)
+  {
+    BaseResponseModel response = new BaseResponseModel();
+
+    try
+    {
+      var movie = await _context.Movies.Where(m => m.Id == id).FirstOrDefaultAsync();
+
+      if (movie == null)
+      {
+        response.Status = false;
+        response.Message = "Invalid movie record.";
+
+        return BadRequest(response);
+      }
+
+      _context.Movies.Remove(movie);
+      await _context.SaveChangesAsync();
+
+      response.Status = true;
+      response.Message = "Deleted successfully.";
+
+      return Ok(response);
     }
     catch (Exception ex)
     {
